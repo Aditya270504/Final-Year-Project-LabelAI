@@ -1,0 +1,7 @@
+Flask
+pandas
+catboost
+numpy
+requests
+google-generativeai
+python-dotenv

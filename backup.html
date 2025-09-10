@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Label AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        #reader__dashboard_section_csr button {
+            background-color: #4f46e5 !important;
+            color: white !important;
+            border-radius: 0.5rem !important;
+            padding: 8px 16px !important;
+        }
+        .scanner-container {
+            overflow: hidden;
+            border-radius: 0.75rem;
+            border: 2px dashed #9ca3af;
+        }
+        .spinner {
+            border-top-color: #4f46e5;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto max-w-4xl p-4">
+        <header class="text-center my-6">
+            <h1 class="text-4xl font-bold text-indigo-600">LabelAI</h1>
+            <p class="text-gray-600 mt-2">Use your camera to scan a product's barcode or enter it manually for an AI-powered health analysis.</p>
+        </header>
+
+        <!-- Loading Spinner -->
+        <div id="loading-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="spinner h-16 w-16 rounded-full border-4 border-gray-300"></div>
+        </div>
+
+        <!-- Main Content Area -->
+        <main id="main-content">
+            <!-- Input Tabs -->
+            <div class="bg-white p-2 rounded-lg shadow-md mb-6">
+                <div class="flex border-b">
+                    <button id="scan-tab" class="flex-1 py-2 text-center font-semibold text-indigo-600 border-b-2 border-indigo-600">Scan with Camera</button>
+                    <button id="manual-tab" class="flex-1 py-2 text-center font-semibold text-gray-500">Enter Manually</button>
+                </div>
+
+                <!-- Scanner View -->
+                <div id="scanner-view" class="p-4">
+                    <p class="text-center text-gray-500 mb-4">Position a barcode inside the frame to scan it.</p>
+                    <div id="reader-container" class="scanner-container w-full max-w-md mx-auto aspect-square">
+                        <div id="reader"></div>
+                    </div>
+                </div>
+
+                <!-- Manual Input View -->
+                <div id="manual-view" class="p-4 hidden">
+                    <div class="flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
+                        <input type="text" id="manual-barcode-input" class="flex-grow w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="e.g., 3017620422003">
+                        <button id="manual-analyze-btn" class="w-full sm:w-auto bg-indigo-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors">Analyze</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results View -->
+            <div id="results-view" class="hidden">
+                 <button id="scan-again-btn" class="w-full mb-4 bg-gray-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors">Scan Another Product</button>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div id="product-summary" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div class="md:col-span-1">
+                            <img id="product-image" src="" alt="Product Image" class="w-full h-auto object-contain rounded-lg border">
+                        </div>
+                        <div class="md:col-span-2">
+                            <h2 id="product-name" class="text-3xl font-bold mb-4"></h2>
+                            <div class="text-center bg-indigo-50 p-4 rounded-lg">
+                                <h3 class="text-lg font-semibold text-gray-700">⭐ Overall Health Score</h3>
+                                <p id="health-score" class="text-5xl font-bold text-indigo-600 my-2">0/10</p>
+                                <p id="health-summary" class="text-gray-600"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Nutrition Table -->
+                    <div class="mb-6">
+                        <h3 class="text-xl font-semibold mb-3">📋 Nutrition Facts</h3>
+                        <div class="overflow-x-auto">
+                            <table id="nutrition-table" class="min-w-full bg-white border rounded-lg">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nutrient</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount per 100g</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200">
+                                    <!-- Rows will be inserted here by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1">
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3">🥗 Ingredient Breakdown</h3>
+                            <div id="ingredients-list" class="space-y-2"></div>
+                        </div>
+                        <div class="mt-6">
+                            <h3 class="text-xl font-semibold mb-3">🔄 Better Alternatives</h3>
+                            <div id="alternatives-list" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <!-- Alternatives will be inserted here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        // GEMINI API KEY
+        const GEMINI_API_KEY = "AIzaSyBV561HCKZYg4XtE3-iGnb14mRCAqB-w1c";
+
+        // --- DOM ELEMENTS ---
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const mainContent = document.getElementById('main-content');
+        const resultsView = document.getElementById('results-view');
+        const scannerView = document.getElementById('scanner-view');
+        const manualView = document.getElementById('manual-view');
+        const scanTab = document.getElementById('scan-tab');
+        const manualTab = document.getElementById('manual-tab');
+        const manualAnalyzeBtn = document.getElementById('manual-analyze-btn');
+        const manualInput = document.getElementById('manual-barcode-input');
+        const scanAgainBtn = document.getElementById('scan-again-btn');
+
+        let html5QrCode;
+
+        // --- API & AI FUNCTIONS ---
+
+        async function getProductData(barcode) {
+            const apiUrl = `https://world.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name_en,ingredients_text_en,ingredients_text,image_front_url,nutriments`;
+            try {
+                const response = await fetch(apiUrl);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const data = await response.json();
+                if (data.status === 1 && data.product) return data.product;
+                return { error: true, barcode };
+            } catch (error) {
+                console.error(`API request for barcode ${barcode} failed:`, error);
+                return { error: true, barcode };
+            }
+        }
+        
+        async function searchForProductByName(productName) {
+            const searchUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(productName)}&search_simple=1&action=process&json=1&page_size=5`; // Fetch 5 to have options
+            try {
+                const response = await fetch(searchUrl);
+                if (!response.ok) return null;
+                const data = await response.json();
+                // Find the first product in the results that has an image
+                return data.products?.find(p => p.image_front_url) || null;
+            } catch (error) {
+                console.error(`Failed to search for ${productName}:`, error);
+                return null;
+            }
+        }
+
+        async function callAiModel(prompt) {
+            if (!GEMINI_API_KEY || GEMINI_API_KEY.includes("YOUR_GEMINI_API_KEY_HERE")) {
+                alert("Please configure your Gemini API Key in the script.");
+                return null;
+            }
+            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+            const payload = { contents: [{ parts: [{ text: prompt }] }] };
+            try {
+                const response = await fetch(API_URL, { method: 'POST', headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`AI API error! status: ${response.status}, message: ${errorData.error.message}`);
+                }
+                const aiResponse = await response.json();
+                if (aiResponse.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    return aiResponse.candidates[0].content.parts[0].text;
+                } else {
+                    throw new Error("Invalid response structure from AI model.");
+                }
+            } catch (error) {
+                console.error("Failed to call AI model:", error);
+                alert(`Failed to call AI model. Please check the console for details. Error: ${error.message}`);
+                return null;
+            }
+        }
+
+        async function analyzeIngredient(ingredientName) {
+            const prompt = `Analyze the food ingredient: '${ingredientName}'. Adhering to strict European Union (EU) food safety standards, classify this ingredient. Pay special attention to common allergens (like soy, nuts, gluten, dairy) and controversial additives like High-Fructose Corn Syrup (HFCS), which should be marked 'harmful'. Start your response with one word: 'safe' or 'harmful'. Then, on a new line, provide a concise, easy-to-understand paragraph (2-3 sentences) explaining the ingredient's purpose, potential health impacts, and mention if it's a common allergen.`;
+            const responseText = await callAiModel(prompt);
+            if (!responseText) return { status: "unknown", explanation: "Could not analyze ingredient." };
+            const parts = responseText.toLowerCase().split('\n', 1);
+            const status = parts[0].trim();
+            const explanation = responseText.substring(status.length).trim();
+            if (status.includes("harmful")) return { status: "harmful", explanation };
+            if (status.includes("safe")) return { status: "safe", explanation };
+            return { status: "unknown", explanation: responseText };
+        }
+
+        async function getOverallHealthScore(productName, ingredientsList) {
+            const prompt = `Analyze the healthiness of a product named '${productName}' with the following ingredients: ${ingredientsList.join(', ')}. Based on these ingredients, provide an overall health score from 1 (very unhealthy) to 10 (very healthy). Your response must be only the number, for example: 7.5`;
+            const responseText = await callAiModel(prompt);
+            return responseText ? parseFloat(responseText.trim()) : 5.0;
+        }
+
+        async function getAlternativeSearchTerms(productName) {
+            const prompt = `Suggest ten healthier, generic food product alternatives to '${productName}'. Provide only a JSON array of strings. For example: ["organic apple juice", "whole wheat crackers", "low sodium tomato soup", "greek yogurt", "unsalted almonds", "brown rice cakes", "sparkling water", "dark chocolate", "quinoa puffs", "baked sweet potato fries"].`;
+            const responseText = await callAiModel(prompt);
+            if (!responseText) return [];
+            try {
+                const cleanedText = responseText.replace(/```json\n?|\n?```/g, '');
+                return JSON.parse(cleanedText);
+            } catch (e) {
+                console.error("Failed to parse AI alternative search terms:", e);
+                return [];
+            }
+        }
+
+        // --- UI & RENDER FUNCTIONS ---
+        
+        function showLoading(isLoading) {
+            loadingOverlay.classList.toggle('hidden', !isLoading);
+        }
+
+        async function findFirstThreeAlternativesWithImages(searchTerms) {
+            const foundProducts = [];
+            for (const term of searchTerms) {
+                if (foundProducts.length >= 3) break;
+                const product = await searchForProductByName(term);
+                if (product) {
+                    foundProducts.push(product);
+                }
+            }
+            return foundProducts;
+        }
+
+        async function renderResults(product, analysis) {
+            document.getElementById('product-name').textContent = product.product_name_en || 'N/A';
+            document.getElementById('product-image').src = product.image_front_url || 'https://placehold.co/400x400/e2e8f0/4a5568?text=No+Image';
+            
+            const score = analysis.healthScore;
+            document.getElementById('health-score').textContent = `${score}/10`;
+            let summaryText = '';
+            if (score < 5) summaryText = 'Low health score due to several potentially harmful ingredients.';
+            else if (score < 7.5) summaryText = 'Moderately healthy. Consider consuming in moderation.';
+            else summaryText = 'Appears to be a healthy choice.';
+            document.getElementById('health-summary').textContent = summaryText;
+
+            const nutritionTableBody = document.querySelector('#nutrition-table tbody');
+            nutritionTableBody.innerHTML = ''; 
+            const nutriments = product.nutriments || {};
+            const nutritionData = {
+                'Energy (kcal)': nutriments['energy-kcal_100g'],
+                'Fat': nutriments.fat_100g,
+                'Saturated Fat': nutriments['saturated-fat_100g'],
+                'Carbohydrates': nutriments.carbohydrates_100g,
+                'Sugars': nutriments.sugars_100g,
+                'Protein': nutriments.proteins_100g,
+                'Salt': nutriments.salt_100g,
+            };
+
+            for (const [name, value] of Object.entries(nutritionData)) {
+                if (value !== undefined) {
+                    const row = document.createElement('tr');
+                    const unit = name.includes('Energy') ? 'kcal' : 'g';
+                    row.innerHTML = `
+                        <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">${name}</td>
+                        <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">${parseFloat(value).toFixed(2)} ${unit}</td>
+                    `;
+                    nutritionTableBody.appendChild(row);
+                }
+            }
+
+            const ingredientsContainer = document.getElementById('ingredients-list');
+            ingredientsContainer.innerHTML = '';
+            analysis.ingredientAnalysis.forEach(item => {
+                const icon = item.status === 'harmful' ? '❌' : (item.status === 'safe' ? '✅' : '❔');
+                const div = document.createElement('div');
+                div.className = 'p-3 bg-gray-50 rounded-lg border';
+                div.innerHTML = `
+                    <details>
+                        <summary class="font-semibold cursor-pointer">${icon} ${item.name.charAt(0).toUpperCase() + item.name.slice(1)}</summary>
+                        <p class="mt-2 text-gray-600">${item.explanation}</p>
+                    </details>
+                `;
+                ingredientsContainer.appendChild(div);
+            });
+
+            const alternativesContainer = document.getElementById('alternatives-list');
+            alternativesContainer.innerHTML = ''; 
+            for (const altProduct of analysis.alternatives) {
+                const card = document.createElement('div');
+                card.className = 'border rounded-lg p-2 text-center flex flex-col justify-between';
+                const imageUrl = altProduct.image_front_url || 'https://placehold.co/200x200/e2e8f0/4a5568?text=Not+Found';
+                const productName = altProduct.product_name || 'Alternative';
+                card.innerHTML = `
+                    <img src="${imageUrl}" class="h-24 w-24 mx-auto object-contain mb-2 rounded">
+                    <p class="text-sm font-medium">${productName}</p>
+                `;
+                alternativesContainer.appendChild(card);
+            }
+
+
+            document.querySelector('#main-content > .bg-white').classList.add('hidden');
+            resultsView.classList.remove('hidden');
+        }
+
+        function switchTab(isScanTab) {
+            if (isScanTab) {
+                scanTab.classList.add('border-indigo-600', 'text-indigo-600');
+                scanTab.classList.remove('text-gray-500');
+                manualTab.classList.remove('border-indigo-600', 'text-indigo-600');
+                manualTab.classList.add('text-gray-500');
+                scannerView.classList.remove('hidden');
+                manualView.classList.add('hidden');
+                startScanner();
+            } else {
+                manualTab.classList.add('border-indigo-600', 'text-indigo-600');
+                manualTab.classList.remove('text-gray-500');
+                scanTab.classList.remove('border-indigo-600', 'text-indigo-600');
+                scanTab.classList.add('text-gray-500');
+                manualView.classList.remove('hidden');
+                scannerView.classList.add('hidden');
+                stopScanner();
+            }
+        }
+
+        // --- MAIN LOGIC & EVENT LISTENERS ---
+
+        async function runAnalysis(barcode) {
+            if (!GEMINI_API_KEY || GEMINI_API_KEY.includes("YOUR_GEMINI_API_KEY_HERE")) {
+                alert("Please configure your Gemini API Key in the script before analyzing.");
+                return;
+            }
+
+            showLoading(true);
+            stopScanner();
+            
+            const product = await getProductData(barcode);
+            if (product && !product.error) {
+                const ingredientsText = product.ingredients_text_en || product.ingredients_text || '';
+                const ingredients = ingredientsText
+                    .split(',')
+                    .map(ing => ing.trim().toLowerCase().replace(/_/g, ''))
+                    .filter(ing => ing && ing !== '.');
+
+                const uniqueIngredients = [...new Set(ingredients)];
+
+                const analysis = {};
+                analysis.healthScore = await getOverallHealthScore(product.product_name_en, uniqueIngredients);
+                
+                const alternativeSearchTerms = await getAlternativeSearchTerms(product.product_name_en);
+                analysis.alternatives = await findFirstThreeAlternativesWithImages(alternativeSearchTerms);
+                
+                analysis.ingredientAnalysis = await Promise.all(uniqueIngredients.map(async (ing) => {
+                    const result = await analyzeIngredient(ing);
+                    return { name: ing, ...result };
+                }));
+
+                await renderResults(product, analysis);
+            }
+            showLoading(false);
+        }
+
+        function startScanner() {
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode("reader");
+            }
+            if (html5QrCode.isScanning) {
+                return;
+            }
+            html5QrCode.start(
+                { facingMode: "environment" },
+                {
+                    fps: 10,
+                    qrbox: { width: 250, height: 250 }
+                },
+                (decodedText, decodedResult) => {
+                    runAnalysis(decodedText);
+                },
+                (errorMessage) => {
+                    // parse error callback, can be ignored
+                })
+                .catch((err) => {
+                    console.error("Unable to start scanning.", err);
+                    alert("Unable to start camera. Please ensure you've given permission.");
+                });
+        }
+        
+        function stopScanner() {
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().catch(err => console.error("Error stopping scanner:", err));
+            }
+        }
+
+        scanTab.addEventListener('click', () => switchTab(true));
+        manualTab.addEventListener('click', () => switchTab(false));
+        manualAnalyzeBtn.addEventListener('click', () => {
+            if (manualInput.value) {
+                runAnalysis(manualInput.value);
+            } else {
+                alert("Please enter a barcode.");
+            }
+        });
+        scanAgainBtn.addEventListener('click', () => {
+            resultsView.classList.add('hidden');
+            document.querySelector('#main-content > .bg-white').classList.remove('hidden');
+            manualInput.value = ''; // Clear the input field
+            switchTab(true);
+        });
+
+        // Initial setup
+        document.addEventListener('DOMContentLoaded', () => {
+            switchTab(true);
+        });
+
+    </script>
+</body>
+</html>
